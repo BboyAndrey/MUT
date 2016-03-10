@@ -36,6 +36,7 @@
 extern char User_Data[6];
 extern int Pc_array[6];
 int temp = 0;
+
 /* USER CODE END INCLUDE */
 
 /** @addtogroup STM32_USB_OTG_DEVICE_LIBRARY

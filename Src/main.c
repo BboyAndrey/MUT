@@ -35,7 +35,7 @@
 #include "usb_device.h"
 
 /* USER CODE BEGIN Includes */
-
+#include "math.h"
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -56,14 +56,24 @@ char tmpr[5];
 //uint8_t testDataToSend[8];
 char User_Data[6] = {0};
 int Pc_array[6] = {0};
+
+enum PwmType{Level1, Level2, Level3};
+int PwmType = 0; 
+
 int a = 0; 
 int b = 0; 
 int c = 0;
 
+
 // значения напряжения смещения и коэффициента усиления
-//double  Uoffset = 0.9;
-//uint8_t K = 2;
-//double q = 3.3 / 4095;
+double Uoffset = 0.9;
+uint8_t K = 2;
+double q = 3.3 / 4095;
+
+// напряжение на выходе микросхемы и текущее значение температуры
+double Uout = 0;
+double NowTemp = 0;
+int INowTemp = 0;
 
 /* USER CODE END PV */
 
@@ -88,6 +98,7 @@ void SendTempature(const char * str);
 //void PID(); 
  void GetTempature();
 
+
 /* USER CODE END 0 */
 
 int main(void)
@@ -101,7 +112,7 @@ int main(void)
   //sprintf(str, "%d", number);
   
   
-
+  
   /* USER CODE END 1 */
 
   /* MCU Configuration----------------------------------------------------------*/
@@ -124,6 +135,12 @@ int main(void)
 //    HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_SET);
 //  }
   //sprintf(str, "%d", number);
+  //Uout = 2;
+  //NowTemp = -11.66 * pow(Uout, 2)+ 103.3 * Uout + 0.015;
+  //a = (int) round(NowTemp);
+  //a = (int) NowTemp;
+  //Uout = (3000 * q) / K - Uoffset;
+  
   
 start : 
   // wait start
@@ -132,6 +149,8 @@ start :
     HAL_Delay(1);
   }
   
+  HAL_Delay(100);
+  Pc_array[0] = 0;
   //sprintf(str, "%d", number);
   // set new ustavka 
   HAL_Delay(100);
@@ -151,6 +170,7 @@ nustavka :
   if(-18 < ustavka && ustavka < 20) {
     // включаем 1 - ый каскад на q = 1.35
     a++;
+    PwmType = Level1;
     TIM4->CCR1 = 31111;
     //TIM4->CCR1 = 10000;
     HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_1);
@@ -160,6 +180,7 @@ nustavka :
     // включаем 1 - ый каскад на q = 1.35
     // включаем 2 - ый каскад на q = 1.35
     b++;
+    PwmType = Level2;
     TIM4->CCR1 = 31111;
     TIM4->CCR2 = 31111;
     
@@ -173,6 +194,7 @@ nustavka :
     // включаем 2 - ый каскад на q = 1.35
     // включаем 3 - ый каскад на q = 1.35
     c++;
+    PwmType = Level3;
     TIM4->CCR1 = 31111;
     TIM4->CCR2 = 31111;
     TIM4->CCR3 = 31111;
@@ -183,6 +205,8 @@ nustavka :
   }
   
   
+  //NowTemp = 2;
+  //NowTemp = pow(NowTemp, 3);
   
   /* USER CODE END 2 */
 
@@ -198,9 +222,7 @@ nustavka :
     
     // конфигурирование 1 каскада, устанавливаем  TIM4->CCR1
     
-    //number++;
-    //sprintf(tmpr, "%d", number);
-    
+      
     
     // start ADC
     HAL_ADC_Start_IT(&hadc1);
@@ -210,6 +232,7 @@ nustavka :
     
     // считывание данных с датчика температуры 
     GetTempature(); 
+    // вводим задержку, чтобы запускался клиент C#
     HAL_Delay(1);
     SendTempature(tmpr);
     
@@ -221,7 +244,75 @@ nustavka :
     //SendTempature(temp);
     //HAL_Delay(500);
     
-     
+    // проверяем пришла ли команда стоп
+    if(Pc_array[5] == 120)  {
+      // turn off all PWM
+      switch(PwmType) {
+      case Level1 : {
+        HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_1);
+        break;
+      }
+      
+      case Level2 : {
+        HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_1);
+        HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_2);
+        break;
+      }
+        
+      case Level3 : {
+        HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_1);
+        HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_2);
+        HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_3);
+        break;
+      }
+      default: 
+      }
+      
+      //HAL_Delay(100);
+      //Pc_array[0] = 0;
+      //HAL_Delay(100);
+      //HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_1);
+      Pc_array[5] = 0;
+      goto start; 
+    }
+    
+    // проверяем пришло ли новое значение температуры
+    else if(ustavka != Pc_array[1]) {
+      HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_SET);
+      
+
+      switch(PwmType) {
+      case Level1 : {
+        HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_1);
+        break;
+      }
+      
+      case Level2 : {
+        HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_1);
+        HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_2);
+        break;
+      }
+        
+      case Level3 : {
+        HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_1);
+        HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_2);
+        HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_3);
+        break;
+      }
+      default: 
+      }
+      
+      HAL_Delay(10);
+      ustavka = Pc_array[1];
+      HAL_Delay(10);
+      
+      goto nustavka;
+    }
+    
+    // вычисление ошибки
+    
+    
+    
     
 //    if(Pc_array[5] == 1) {
 //      // turn off all PWM
@@ -237,7 +328,7 @@ nustavka :
 //    else {
 //      goto nustavka;
 //    }
-    
+      
       
     
   }
@@ -418,12 +509,13 @@ void GetTempature() {
   // вычисляем истинное значение температуры по значению АЦП
   // для начала вычислим значение напряжения на выходе AD595
   
-  //double Uout = (adc[0] * q) / K - Uoffset;
-  // double NowTemp = -11.66 * Uout ^ 2 + 103.3 * Uout + 0.015;
+  // Uout = (adc[0] * q) / K - Uoffset;
+  // NowTemp = -11.66 * pow(Uout, 2)+ 103.3 * Uout + 0.015;
+  // INowTemp = (int) round(NowTemp);
+  // sprintf(tmpr, "%d", (int) round(NowTemp));
   
   sprintf(tmpr, "%d", adc[0]);
 }
-
 
 
 /* USER CODE END 4 */
