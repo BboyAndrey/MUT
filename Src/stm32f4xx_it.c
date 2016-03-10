@@ -81,7 +81,6 @@ void ADC_IRQHandler(void)
   
   adc[0] = HAL_ADC_GetValue(&hadc1);
   //sprintf(str, "%d", adc[0]);
-  //sprintf(str, "%d", adc[0]);
   /* USER CODE END ADC_IRQn 0 */
   HAL_ADC_IRQHandler(&hadc1);
   /* USER CODE BEGIN ADC_IRQn 1 */

@@ -51,17 +51,19 @@ int ustavka = 0;
 uint32_t adc[1] = {0};
 uint32_t abc[1] = {1578};
 //char symbol;
-//char str[5] = "";
-//int number = 1234;
-char str[5];
+char tmpr[5];
 
-uint8_t testDataToSend[8];
+//uint8_t testDataToSend[8];
 char User_Data[6] = {0};
 int Pc_array[6] = {0};
 int a = 0; 
 int b = 0; 
 int c = 0;
 
+// значения напряжения смещения и коэффициента усиления
+//double  Uoffset = 0.9;
+//uint8_t K = 2;
+//double q = 3.3 / 4095;
 
 /* USER CODE END PV */
 
@@ -81,11 +83,10 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 /* USER CODE END PFP */
 /* USER CODE BEGIN 0 */
 
-void Send_String(const char * str);
-//void PID(); 
-void Send_ADC(uint32_t tabc);
-void SendPrintf(); 
 
+void SendTempature(const char * str);
+//void PID(); 
+ void GetTempature();
 
 /* USER CODE END 0 */
 
@@ -93,7 +94,7 @@ int main(void)
 {
   
   /* USER CODE BEGIN 1 */
-  char temp[] = " Hello World ";
+  //char temp[] = " Hello World ";
   //abc[0] = 123;
   //symbol = abc[0] + '0';
   //char str[5];
@@ -130,19 +131,19 @@ start :
    while (Pc_array[0] != 11) {
     HAL_Delay(1);
   }
+  
   //sprintf(str, "%d", number);
   // set new ustavka 
   HAL_Delay(100);
   ustavka = Pc_array[1];
   
-  for (uint8_t i = 0; i < 8; i++)
-  {
-    testDataToSend[i] = i;
-  }
+//  for (uint8_t i = 0; i < 8; i++)
+//  {
+//    testDataToSend[i] = i;
+//  }
   
   //sprintf(str, "%d", ustavka);
   
-  //sprintf(str, "%d", number);
   
 nustavka : 
   
@@ -151,6 +152,7 @@ nustavka :
     // включаем 1 - ый каскад на q = 1.35
     a++;
     TIM4->CCR1 = 31111;
+    //TIM4->CCR1 = 10000;
     HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_1);
   }
   
@@ -182,9 +184,6 @@ nustavka :
   
   
   
-  
-  
-  
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -200,28 +199,28 @@ nustavka :
     // конфигурирование 1 каскада, устанавливаем  TIM4->CCR1
     
     //number++;
-    //sprintf(str, "%d", number);
+    //sprintf(tmpr, "%d", number);
+    
+    
     // start ADC
     HAL_ADC_Start_IT(&hadc1);
     // ждем пока произойдет прерывание и новое значение установится в adc
     HAL_Delay(50);     
     
-    //CDC_Transmit_FS(adc, sizeof(adc));
-    //CDC_Transmit_FS(testDataToSend, 8);
+    
+    // считывание данных с датчика температуры 
+    GetTempature(); 
+    HAL_Delay(1);
+    SendTempature(tmpr);
+    
+    //SendTempature(tmpr);
+    //sprintf(tmpr, "%d", abc[0]++);
+    //sprintf(tmpr, "%d", ustavka);
+    
+        
+    //SendTempature(temp);
     //HAL_Delay(500);
     
-    //Send_String(str);
-    //number++;
-    //sprintf(str, "%d", abc[0]++);
-    SendPrintf();
-    //CDC_Transmit_FS((uint8_t*) abc, sizeof(abc));
-    
-    //sprintf();
-    //sprintf(str, "%d", ustavka);
-    //Send_ADC(adc);
-    //Send_String(temp);
-    //HAL_Delay(500);
-    Send_String(str);
      
     
 //    if(Pc_array[5] == 1) {
@@ -239,11 +238,7 @@ nustavka :
 //      goto nustavka;
 //    }
     
-    
-    //Send_String(temp);
-//    if(UiData[1] == -15) {
-//      HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_SET);
-//    }
+      
     
   }
   /* USER CODE END 3 */
@@ -415,17 +410,20 @@ void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void Send_String(const char * str) {
+void SendTempature(const char * str) {
   CDC_Transmit_FS((uint8_t*) str, strlen(str));
 }
 
-void Send_ADC(uint32_t tabc) {
-  CDC_Transmit_FS((uint8_t*) tabc, sizeof(uint32_t));
+void GetTempature() {
+  // вычисляем истинное значение температуры по значению АЦП
+  // для начала вычислим значение напряжения на выходе AD595
+  
+  //double Uout = (adc[0] * q) / K - Uoffset;
+  // double NowTemp = -11.66 * Uout ^ 2 + 103.3 * Uout + 0.015;
+  
+  sprintf(tmpr, "%d", adc[0]);
 }
 
-void SendPrintf() {
-  sprintf(str, "%d", adc[0]);
-}
 
 
 /* USER CODE END 4 */
