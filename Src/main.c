@@ -60,6 +60,20 @@ int Pc_array[6] = {0};
 enum {Level1, Level2, Level3};
 int PwmType = 0; 
 
+typedef struct
+{
+  double dState;                  // Last position input
+  double iState;                  // Integrator state
+  double iMax, iMin;      
+  // Maximum and minimum allowable integrator state
+  double    iGain,        // integral gain
+            pGain,        // proportional gain
+             dGain;         // derivative gain
+} SPid;
+
+
+
+// переменные для отладки
 int a = 0; 
 int b = 0; 
 int c = 0;
@@ -95,7 +109,7 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 
 
 void SendTempature(const char * str);
-//void PID(); 
+double UpdatePID(SPid * pid, double error, double position);
  void GetTempature();
 void PwmStop(int pwm); 
 
@@ -106,13 +120,20 @@ int main(void)
   
   /* USER CODE BEGIN 1 */
   //char temp[] = " Hello World ";
-  abc[0] = 123;
-  //symbol = abc[0] + '0';
-  //char str[5];
-  //sprintf(str, "%d", number);
   
-  //a += 2;
+  abc[0] = 123;
+  SPid mut; 
+  mut.dState = 0;
+  mut.iState = 0;
+  mut.iMax = 0.2;
+  mut.iMin = -0.2;
+  mut.iGain = 0.1;
+  mut.pGain = 10;
+  mut.dGain = 100;
+  
+  //symbol = abc[0] + '0';
   //K++;
+  
   /* USER CODE END 1 */
 
   /* MCU Configuration----------------------------------------------------------*/
@@ -131,17 +152,8 @@ int main(void)
   MX_USB_DEVICE_Init();
   
   /* USER CODE BEGIN 2 */
-//  if(str[0] == '1') {
-//    HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_SET);
-//  }
-  //sprintf(str, "%d", number);
-  //Uout = 2;
-  //NowTemp = -11.66 * pow(Uout, 2)+ 103.3 * Uout + 0.015;
-  //a = (int) round(NowTemp);
-  //a = (int) NowTemp;
-  //Uout = (3000 * q) / K - Uoffset;
-  
-  
+
+    
 start : 
   // wait start
   
@@ -149,19 +161,10 @@ start :
     HAL_Delay(1);
   }
   
-  HAL_Delay(100);
   Pc_array[0] = 0;      
   //sprintf(str, "%d", number);
   // set new ustavka 
-  HAL_Delay(100);
   ustavka = Pc_array[1];
-  
-//  for (uint8_t i = 0; i < 8; i++)
-//  {
-//    testDataToSend[i] = i;
-//  }
-  
-  //sprintf(str, "%d", ustavka);
   
   
 nustavka : 
@@ -215,6 +218,8 @@ nustavka :
   /* USER CODE BEGIN 3 */
     
     // PID();
+    //UpdatePID(&mut, ustavka - NowTemp, NowTemp);
+    
     
     // конфигурирование 1 каскада, устанавливаем  TIM4->CCR1
     
@@ -223,19 +228,13 @@ nustavka :
     // start ADC
     HAL_ADC_Start_IT(&hadc1);
     // ждем пока произойдет прерывание и новое значение установится в adc
-    HAL_Delay(50);     
+    HAL_Delay(100);     
     
     
     // считывание данных с датчика температуры 
     GetTempature(); 
-    // вводим задержку, чтобы запускался клиент C#
     SendTempature(tmpr);
     
-    //SendTempature(tmpr);
-    //sprintf(tmpr, "%d", abc[0]++);
-    //sprintf(tmpr, "%d", ustavka);
-    
-        
     //SendTempature(temp);
     //HAL_Delay(500);
     
@@ -250,7 +249,6 @@ nustavka :
     // проверяем пришло ли новое значение температуры
     else if(ustavka != Pc_array[1]) {
       HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_SET);
-      
       PwmStop(PwmType);
       ustavka = Pc_array[1];
       goto nustavka;
@@ -258,26 +256,7 @@ nustavka :
     
     // вычисление ошибки
     
-    
-    
-    
-//    if(Pc_array[5] == 1) {
-//      // turn off all PWM
-//      HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_1);
-//      //HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_2);
-//      //HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_3);
-//      goto start; 
-//      
-//    }
-//    else if(ustavka == Pc_array[1]) {
-//      // вычисление ошибки
-//    }
-//    else {
-//      goto nustavka;
-//    }
-      
-      
-    
+        
   }
   /* USER CODE END 3 */
 
@@ -448,6 +427,22 @@ void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+double UpdatePID(SPid * pid, double error, double position) {
+    double pTerm, dTerm, iTerm;
+    pTerm = pid->pGain * error;    // calculate the proportional term
+    pid->iState += error;          // calculate the integral state with appropriate limiting
+ 
+    if (pid->iState > pid->iMax) 
+        pid->iState = pid->iMax;     
+    else if (pid->iState < pid->iMin) 
+        pid->iState = pid->iMin;
+    iTerm = pid->iGain * pid->iState;    // calculate the integral term
+    dTerm = pid->dGain * (position - pid->dState);
+    pid->dState = position;
+    return (pTerm + iTerm - dTerm);
+}
+
 void SendTempature(const char * str) {
   CDC_Transmit_FS((uint8_t*) str, strlen(str));
 }
