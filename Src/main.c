@@ -57,7 +57,7 @@ char tmpr[5];
 char User_Data[6] = {0};
 int Pc_array[6] = {0};
 
-enum PwmType{Level1, Level2, Level3};
+enum {Level1, Level2, Level3};
 int PwmType = 0; 
 
 int a = 0; 
@@ -97,7 +97,7 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 void SendTempature(const char * str);
 //void PID(); 
  void GetTempature();
-
+void PwmStop(int pwm); 
 
 /* USER CODE END 0 */
 
@@ -106,13 +106,13 @@ int main(void)
   
   /* USER CODE BEGIN 1 */
   //char temp[] = " Hello World ";
-  //abc[0] = 123;
+  abc[0] = 123;
   //symbol = abc[0] + '0';
   //char str[5];
   //sprintf(str, "%d", number);
   
-  
-  
+  //a += 2;
+  //K++;
   /* USER CODE END 1 */
 
   /* MCU Configuration----------------------------------------------------------*/
@@ -150,7 +150,7 @@ start :
   }
   
   HAL_Delay(100);
-  Pc_array[0] = 0;
+  Pc_array[0] = 0;      
   //sprintf(str, "%d", number);
   // set new ustavka 
   HAL_Delay(100);
@@ -204,10 +204,6 @@ nustavka :
     HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);
   }
   
-  
-  //NowTemp = 2;
-  //NowTemp = pow(NowTemp, 3);
-  
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -233,7 +229,6 @@ nustavka :
     // считывание данных с датчика температуры 
     GetTempature(); 
     // вводим задержку, чтобы запускался клиент C#
-    HAL_Delay(1);
     SendTempature(tmpr);
     
     //SendTempature(tmpr);
@@ -247,31 +242,7 @@ nustavka :
     // проверяем пришла ли команда стоп
     if(Pc_array[5] == 120)  {
       // turn off all PWM
-      switch(PwmType) {
-      case Level1 : {
-        HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_1);
-        break;
-      }
-      
-      case Level2 : {
-        HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_1);
-        HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_2);
-        break;
-      }
-        
-      case Level3 : {
-        HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_1);
-        HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_2);
-        HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_3);
-        break;
-      }
-      default: 
-      }
-      
-      //HAL_Delay(100);
-      //Pc_array[0] = 0;
-      //HAL_Delay(100);
-      //HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_1);
+      PwmStop(PwmType);
       Pc_array[5] = 0;
       goto start; 
     }
@@ -280,32 +251,8 @@ nustavka :
     else if(ustavka != Pc_array[1]) {
       HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_SET);
       
-
-      switch(PwmType) {
-      case Level1 : {
-        HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_1);
-        break;
-      }
-      
-      case Level2 : {
-        HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_1);
-        HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_2);
-        break;
-      }
-        
-      case Level3 : {
-        HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_1);
-        HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_2);
-        HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_3);
-        break;
-      }
-      default: 
-      }
-      
-      HAL_Delay(10);
+      PwmStop(PwmType);
       ustavka = Pc_array[1];
-      HAL_Delay(10);
-      
       goto nustavka;
     }
     
@@ -479,7 +426,7 @@ void MX_TIM4_Init(void)
 */
 void MX_GPIO_Init(void)
 {
-
+  
   GPIO_InitTypeDef GPIO_InitStruct;
 
   /* GPIO Ports Clock Enable */
@@ -517,6 +464,28 @@ void GetTempature() {
   sprintf(tmpr, "%d", adc[0]);
 }
 
+void PwmStop(int pwm) {
+      switch(PwmType) {
+      case Level1 : {
+        HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_1);
+        break;
+      }
+      
+      case Level2 : {
+       HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_1);
+        HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_2);
+        break;
+     }
+        
+      case Level3 : {
+        HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_1);
+        HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_2);
+        HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_3);
+        break;
+      }
+      default: 
+     }
+}
 
 /* USER CODE END 4 */
 
